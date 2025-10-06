@@ -1,0 +1,381 @@
+  <!DOCTYPE html>
+  <html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Top & Bottom Potensi Iuran — Medan Kota</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+      :root{
+        --color-primary:#004c99; --color-secondary:#0066cc; --color-green:#28a745;
+        --color-yellow-accent:#ffc107; --color-background:#f0f3f6; --color-surface:#ffffff;
+        --color-text-dark:#333333; --color-text-light:#ffffff;
+        --box-shadow:0 4px 12px rgba(0,0,0,0.08); --border-radius:12px;
+        --font-family:'Roboto','Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+      }
+      *{ box-sizing:border-box }
+      body{
+        font-family:var(--font-family); background:var(--color-background); color:var(--color-text-dark);
+        min-height:100vh; padding:20px; overflow-x:hidden;
+      }
+      .container{ max-width:1400px; margin:0 auto; display:flex; flex-direction:column; gap:18px; }
+
+      header{
+        display:flex; align-items:center; justify-content:space-between;
+        background:var(--color-surface); padding:10px 20px; box-shadow:var(--box-shadow);
+        border-radius:var(--border-radius);
+      }
+      .header-section{ display:flex; align-items:center; gap:12px; }
+      .header-logo{ height:70px; border-radius:8px; }
+      .header-title{ text-align:center; }
+      .header-title h1{ font-size:1.4rem; color:var(--color-primary); margin:0; font-weight:700 }
+      .header-title p{ margin:4px 0 0; font-weight:500; font-style:italic }
+
+      .top-bar {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  background-color: var(--color-green);
+                  color: var(--color-text-light);
+                  padding: 8px 15px;
+                  margin-bottom: 10px;
+                  font-weight: 500;
+                  border-radius: var(--border-radius);
+                  box-shadow: var(--box-shadow);
+      }
+      .nav-button {
+              display: inline-block;
+              margin-right: 20px;
+              margin-bottom: 10px;
+              padding: 10px 12px;
+              font-size: 1.2em;
+              color: #fff;
+              background-color: #004c99; 
+              border-radius: 6px;
+              text-decoration: none;
+              transition: background 0.3s;
+          }
+
+      .nav-button:hover {
+              background-color: #0066cc;
+      }
+
+      .status-indicator{ padding:4px 8px; border-radius:4px; font-size:.85rem; font-weight:700; text-transform:uppercase }
+      .status-loading{ background:#fff3cd; color:#856404 }
+      .status-online{ background:#d4edda; color:#155724 }
+      .status-error{ background:#f8d7da; color:#721c24 }
+
+      h2{ font-size:1.2rem; color:var(--color-primary); text-align:center; margin:0 0 8px }
+
+      .grid{
+        display:grid; grid-template-columns:1fr 1fr; gap:16px;
+      }
+      .panel{
+        background:var(--color-surface); border-radius:var(--border-radius); box-shadow:var(--box-shadow);
+        padding:12px; overflow:hidden; display:flex; flex-direction:column;
+      }
+      .table-wrap{ overflow:auto; max-height:70vh; border:1px solid #edf2f7; border-radius:10px }
+      .table-green thead th{
+      background: linear-gradient(135deg, #28a745, #20c997);
+      }
+      .table-green tbody tr:hover{ background:#e8f5e9; }
+      .table-red thead th{
+      background: linear-gradient(135deg, #dc3545, #e35d6a);
+      }
+      .table-red tbody tr:hover{ background:#fdecea; }
+      table{ width:100%; border-collapse:collapse; min-width:780px }
+      thead th{
+        position:sticky; top:0; z-index:2; background:linear-gradient(135deg,var(--color-primary),#0056b3);
+        color:var(--color-text-light); text-transform:uppercase; letter-spacing:.3px; font-size:.85rem;
+        padding:10px 12px; text-align:left; white-space:nowrap;
+      }
+      td{ padding:8px 12px; border-bottom:1px solid #edf2f7 }
+      tbody tr:nth-child(even){ background:#f8fafc }
+      tbody tr:hover{ background:#edf2f7 }
+
+      .instansi-link{
+          color: var(--color-secondary);
+          font-weight: 600;
+          text-decoration: none;
+      }
+
+      .instansi-link:hover{
+          color: var(--color-primary);
+          text-decoration: underline;
+      }
+      .num{ text-align:center; width:56px }
+      .val, .idr{ text-align:right; white-space:nowrap }
+      .sub{ font-size:.82rem; color:#666; margin-top:2px }
+
+      .badge{
+        display:inline-block; padding:3px 8px; border-radius:999px; font-size:.78rem; font-weight:600;
+        background:#e8f0fe; color:var(--color-primary)
+      }
+
+      .header-bar{
+                  width: 120px;
+                  margin-left: 15px;
+                  margin-right: 15px;
+                  margin-top: 10px;
+      }
+
+      @media (max-width: 900px){
+        .grid{ grid-template-columns:1fr; }
+        .header-title{ display:none }
+        .top-bar{ flex-direction:column; gap:6px; align-items:flex-start }
+      }
+
+      .loading-spinner{
+        border:4px solid #f3f3f3; border-top:4px solid var(--color-primary);
+        border-radius:50%; width:36px; height:36px; animation:spin 1s linear infinite; margin:14px auto;
+      }
+      @keyframes spin{ 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-section">
+          <img src="medan.png" class="header-logo" alt="Logo Kota Medan">
+          <img src="pemprovsu.png" class="header-logo" alt="Logo Pemprovsu">
+        </div>
+        <div class="header-title">
+          <h1>Data Pemberi Kerja/Badan Usaha Kantor Cabang Medan Kota</h1>
+          <p>(Top & Worst Perusahaan berdasarkan Tenaga Kerja Aktif)</p>
+        </div>
+        <div class="header-section">
+          <img src="logo.png" class="header-logo" alt="BPJS Ketenagakerjaan">
+        </div>
+      </header>
+
+      <div class="top-bar">
+        <div class="top-bar-left">
+          <span id="currentDate"></span>
+          <span id="connectionStatus" class="status-indicator status-loading">Memuat…</span>
+        </div>
+        <div class="top-bar-right">
+          <a href="index.html" class="nav-button">Home</a>
+          <a href="topworst.html" class="nav-button">Top Worst</a>
+          <span style="font-size: 0.9em;">Data dari Google Sheets</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- TOP 10 -->
+        <section class="panel">
+          <h2>Top 10 Perusahaan dengan Tenaga Kerja Aktif Terbanyak <span class="badge" id="badgeTopCount">0 instansi</span></h2>
+          <div class="table-wrap" id="topWrap">
+              <table id="topTable" class="table-green">
+              <thead>
+                  <tr>
+                  <th class="num">No.</th>
+                  <th>Nama Perusahaan   </th>
+                  <th class="num">TK Aktif</th>
+                  <th class="idr">Total Iuran</th>
+                  <th class="idr">Kecamatan</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  <tr><td colspan="5"><div class="loading-spinner"></div></td></tr>
+              </tbody>
+              </table>
+          </div>
+        </section>
+
+        <!-- BOTTOM 10 -->
+        <section class="panel">
+          <h2>Bottom 10 Perusahaan dengan Tenaga Kerja Aktif Terendah<span class="badge" id="badgeBottomCount">0 instansi</span></h2>
+          <div class="table-wrap" id="bottomWrap">
+              <table id="bottomTable" class="table-red">
+              <thead>
+                  <tr>
+                  <th class="num">No.</th>
+                  <th>Nama Perusahaan   </th>
+                  <th class="num">TK Aktif</th>
+                  <th class="idr">Total Iuran</th>
+                  <th class="idr">Kecamatan</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  <tr><td colspan="5"><div class="loading-spinner"></div></td></tr>
+              </tbody>
+              </table>
+          </div>
+          </section>
+      </div>
+    </div>
+
+    <script>
+  const SHEET_CONFIG = {
+    sheetId: "1bi7beUHCGem8U7-huUarJY1V1pfTPLqSCRwghMjAehk",
+    apiKey:  "AIzaSyDDChj-Syqytv2HboLnbflQu7-u_5VAYIE",
+    range:   "Sheet1!A1:N11000"
+  };
+
+  // ===== Utils =====
+  function updateCurrentDate(){
+    const now = new Date();
+    document.getElementById('currentDate').textContent =
+      now.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'});
+  }
+  function setStatus(type, msg){
+    const el = document.getElementById('connectionStatus');
+    el.className = 'status-indicator status-' + type;
+    el.textContent = msg;
+  }
+  function showError(message){
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div style="position:fixed;top:20px;right:20px;background:#dc3545;color:#fff;padding:12px 14px;border-radius:8px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,.3)">
+        <strong>Error:</strong> ${message}
+        <button onclick="this.parentElement.remove()" style="float:right;background:none;border:none;color:#fff;font-size:18px;cursor:pointer;margin-left:10px">&times;</button>
+      </div>`;
+    document.body.appendChild(div);
+    setTimeout(()=>div.remove(), 5000);
+  }
+  function toInt(v){
+    if (typeof v === 'number') return Math.floor(v)||0;
+    if (typeof v !== 'string') return 0;
+    const n = parseInt(v.replace(/[^\d-]/g,''),10);
+    return isNaN(n)?0:n;
+  }
+  function toNumber(x){
+    if (typeof x==='number') return x;
+    if (typeof x!=='string') return 0;
+    let v = x.replace(/[^\d,.-]/g,'');
+    if (v.includes(',') && v.includes('.')) v = v.replace(/\./g,'').replace(',', '.');
+    else if (v.includes(',')) v = v.replace(/,/g,'');
+    const n = parseFloat(v);
+    return isNaN(n)?0:n;
+  }
+  function formatCurrency(n){
+    return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0,maximumFractionDigits:0})
+      .format(Number(n||0));
+  }
+  function capitalizeWords(s){
+    return String(s||'').replace(/\w\S*/g, t => t[0].toUpperCase()+t.slice(1).toLowerCase());
+  }
+  function extractKecamatanFromAlamat(alamat){
+    if (!alamat || typeof alamat!=='string') return 'Lain-lain';
+    const low = alamat.toLowerCase();
+    const list = [
+      "medan amplas","medan area","medan barat","medan baru","medan belawan",
+      "medan deli","medan denai","medan helvetia","medan johor","medan kota",
+      "medan labuhan","medan maimun","medan marelan","medan perjuangan","medan petisah",
+      "medan polonia","medan selayang","medan sunggal","medan tembung","medan timur",
+      "medan tuntungan"
+    ];
+    for (const k of list){ if (low.includes(k)) return capitalizeWords(k); }
+    const m = low.match(/(medan\s+\w+)/i); if (m) return capitalizeWords(m[1]);
+    return 'Lain-lain';
+  }
+  function escapeHTML(s){
+    return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  // ===== Fetch & mapping =====
+  async function fetchGoogleSheetsData(){
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_CONFIG.sheetId}/values/${SHEET_CONFIG.range}?key=${SHEET_CONFIG.apiKey}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+
+    const values = json.values || [];
+    if (values.length === 0) return [];
+
+    const headers = values[0] || [];
+    const rows    = values.slice(1);
+
+    // cari index kolom secara dinamis
+    const idxNama   = headers.findIndex(h => /nama.*(perusahaan|usaha|badan)/i.test(h||''));
+    const idxAlamat = headers.findIndex(h => /alamat/i.test(h||''));
+    const idxTK     = headers.findIndex(h => /(tk|tenaga).*aktif/i.test(h||''));
+    const idxIuran  = headers.findIndex(h => /(total.*iuran|nilai.*posting)/i.test(h||''));
+
+    // fallback ke indeks pasti (A=0): D=3 (Nama), E=4 (Alamat), K=10 (TK Aktif), L=11/M=12 (Iuran)
+    const F_NAMA   = idxNama   !== -1 ? idxNama   : 3;
+    const F_ALAMAT = idxAlamat !== -1 ? idxAlamat : 4;
+    const F_TK     = idxTK     !== -1 ? idxTK     : 10;
+
+    let F_IURAN = idxIuran !== -1 ? idxIuran : 11; // coba L
+    // bila kolom L kosong sementara ada M, pakai M
+    const quickHasM = rows.some(r => toNumber(r[12]) > 0);
+    if (idxIuran === -1 && quickHasM) F_IURAN = 12;
+
+    // map ke objek perusahaan
+    const data = rows.map((row, idx) => {
+      const nama   = row[F_NAMA]   || '';
+      const alamat = row[F_ALAMAT] || '';
+      const tk     = toInt(row[F_TK]);
+      const iuran  = toNumber(row[F_IURAN]);
+
+      return {
+        no: idx+1,
+        namaPerusahaan: nama,
+        alamat,
+        kecamatan: extractKecamatanFromAlamat(alamat),
+        tkAktif: tk,
+        totalIuran: iuran
+      };
+    }).filter(p => String(p.namaPerusahaan||'').trim() !== '');
+
+    return data;
+  }
+
+  // ===== Render =====
+  function renderTable(tbodyEl, list){
+    tbodyEl.innerHTML = '';
+    if (!list || list.length===0){
+      tbodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#666;padding:14px">Tidak ada data</td></tr>`;
+      return;
+    }
+    list.forEach((it, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="num">${i+1}</td>
+        <td>
+          <div style="font-weight:600">${escapeHTML(it.namaPerusahaan)}</div>
+          <div class="sub">${escapeHTML(it.alamat || '-')}</div>
+        </td>
+        <td class="num">${Number(it.tkAktif||0).toLocaleString('id-ID')}</td>
+        <td class="idr">${formatCurrency(it.totalIuran||0)}</td>
+        <td>${escapeHTML(it.kecamatan||'Lain-lain')}</td>
+      `;
+      tbodyEl.appendChild(tr);
+    });
+  }
+
+  async function loadAndRender(){
+    updateCurrentDate();
+    setStatus('loading','Memuat data…');
+    try{
+      const rows = await fetchGoogleSheetsData();
+
+      // urutkan berdasar TK Aktif
+      const top10    = [...rows].sort((a,b)=> (b.tkAktif||0) - (a.tkAktif||0)).slice(0,10);
+      const bottom10 = [...rows].sort((a,b)=> (a.tkAktif||0) - (b.tkAktif||0)).slice(0,10);
+
+      // render
+      renderTable(document.querySelector('#topTable tbody'), top10);
+      renderTable(document.querySelector('#bottomTable tbody'), bottom10);
+
+      // badge + status
+      document.getElementById('badgeTopCount').textContent    = `${top10.length} perusahaan`;
+      document.getElementById('badgeBottomCount').textContent = `${bottom10.length} perusahaan`;
+      setStatus('online', `${rows.length} perusahaan dimuat`);
+    }catch(err){
+      console.error(err);
+      setStatus('error','Gagal memuat data');
+      showError('Gagal memuat data dari Google Sheets. Silakan coba lagi.');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadAndRender();
+    setInterval(loadAndRender, 5 * 60 * 1000); // auto refresh 5 menit
+  });
+</script>
+
+  </body>
+  </html>
