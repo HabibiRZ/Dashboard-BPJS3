@@ -104,7 +104,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #008000; /* Hijau solid, lebih mirip gambar */
+            background: linear-gradient(135deg, var(--color-green), #20c997); /* Gradasi Hijau */
             color: var(--color-text-light);
             padding: 8px 15px; /* Padding sedikit lebih besar */
             margin-bottom: 5px; 
@@ -184,7 +184,6 @@
             grid-template-rows: auto 1fr; 
             gap: 5px 10px; 
             flex-grow: 1;
-            height: calc(100vh - 80px); 
             padding-bottom: 0; 
         }
             
@@ -426,7 +425,26 @@
             animation: spin 1s linear infinite;
             margin: 0 auto;
         }
-
+        
+        /* ================== STYLE UNTUK FOOTER BARU ================== */
+        .main-footer {
+            background: linear-gradient(135deg, var(--color-green), #20c997); /* Gradasi Hijau */
+            color: var(--color-text-light);
+            padding: 8px 15px; /* Padding lebih kecil, sesuai top-bar */
+            font-size: 0.9em; /* Ukuran font lebih kecil */
+            text-align: right; /* Rata kanan */
+            margin-top: 10px; /* Jarak dari konten di atasnya */
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow); /* Shadow konsisten */
+            font-weight: 500; /* Tidak terlalu tebal */
+        }
+        
+        .footer-text {
+            /* Tidak perlu div khusus, langsung di p */
+            margin: 0; /* Hapus margin default p */
+            line-height: 1.4;
+        }
+        
         /* ================== Media Queries untuk Responsif ================== */
         @media (max-width: 900px) {
             .dashboard {
@@ -466,6 +484,12 @@
             .chart-container {
                 height: 200px;
             }
+            
+            .main-footer {
+                padding: 6px 10px; /* Padding lebih kecil lagi untuk mobile */
+                font-size: 0.75rem; /* Ukuran font lebih kecil */
+                text-align: center; /* Rata tengah di mobile */
+            }
         }
 
         @media (max-width: 520px) {
@@ -501,7 +525,7 @@
             </div>
 
             <div class="header-section">
-                <img src="logo.png" alt="Logo BPJS Ketenagakerjaan" class="header-logo">    
+                <img src="logo.png" alt="Logo BPJS Ketenagakerjaan" class="header-logo">     
             </div>
         </header>
         
@@ -515,7 +539,7 @@
                 <a href="topworst.html" class="nav-button">Top & Worst</a>
             </div>
             <div class="top-bar-right" style="display: flex; align-items: center;">
-                <img src="semua.png" alt="Medan" class="header-person" style="margin-left: 5px;">
+                <img src="medanutksemua.png" alt="Medan" class="header-person" style="margin-left: 5px;">
             </div>
         </div>
 
@@ -581,7 +605,10 @@
             </div>
         </div>
     </div>
-
+    
+    <footer class="main-footer">
+        <p class="footer-text">BPJS Ketenagakerjaan Kantor Cabang Medan Kota</p>
+    </footer>
     <script>
         let skalaChart = null;
         let programChart = null;
@@ -872,7 +899,13 @@
             const skalaCounts = {};
             
             data.forEach(company => {
-                const skala = company.skalaUsaha || 'Tidak Diketahui';
+                let skala = company.skalaUsaha || 'Tidak Diketahui';
+                
+                // Gabungkan MI ke Mikro
+                if (skala === 'MI') {
+                    skala = 'Mi'; // Gabungkan MI ke Mikro
+                }
+                
                 skalaCounts[skala] = (skalaCounts[skala] || 0) + 1;
             });
 
@@ -940,7 +973,13 @@
             const programCounts = {};
             
             data.forEach(company => {
-                const program = company.program || 'Tidak Diketahui';
+                let program = company.program || 'Tidak Diketahui';
+                
+                // Ganti "Tidak Diketahui" dengan "JKK & JKM"
+                if (program === 'Tidak Diketahui') {
+                    program = 'JKK & JKM';
+                }
+                
                 programCounts[program] = (programCounts[program] || 0) + 1;
             });
 
@@ -948,14 +987,14 @@
             const programNames = {
                 '3P': 'JKK, JKM & JHT',
                 '4P': 'JKK, JKM, JHT & JP',
-                'Tidak Diketahui': 'Tidak Diketahui'
+                'JKK & JKM': 'JKK & JKM'
             };
 
             const labels = Object.keys(programCounts).map(program => programNames[program] || program);
             const values = Object.values(programCounts);
 
             // Color palette
-            const colors = ['#004c99', '#0066cc', '#6c757d'];
+            const colors = ['#004c99', '#0066cc', '#28a745'];
 
             if (programChart) programChart.destroy();
 
@@ -1026,8 +1065,12 @@
                 }
             });
             
-            // Sort by count descending
-            const sortedKecamatan = Object.keys(kecamatanCounts).sort((a, b) => kecamatanCounts[b] - kecamatanCounts[a]);
+            // Sort by count descending, but put "Lain-lain" at the end
+            const sortedKecamatan = Object.keys(kecamatanCounts).sort((a, b) => {
+                if (a === 'Lain-lain') return 1; // Selalu letakkan "Lain-lain" di akhir
+                if (b === 'Lain-lain') return -1; // Selalu letakkan "Lain-lain" di akhir
+                return kecamatanCounts[b] - kecamatanCounts[a]; // Urutkan berdasarkan jumlah perusahaan
+            });
             
             const mainTableBody = document.getElementById('mainTableBody');
             mainTableBody.innerHTML = '';
@@ -1209,5 +1252,3 @@
     </script>
 </body>
 </html>
-
-
