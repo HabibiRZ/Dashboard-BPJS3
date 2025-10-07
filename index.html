@@ -1027,79 +1027,75 @@
             updateProgramChart(data);
         }
 
-        function updateSkalaChart(data) {
-            const skalaCounts = {};
-            
-            data.forEach(company => {
-                let skala = company.skalaUsaha || 'Tidak Diketahui';
-                
-                // Gabungkan MI ke Mikro
-                if (skala === 'MI') {
-                    skala = 'Mi'; // Gabungkan MI ke Mikro
-                }
-                
-                skalaCounts[skala] = (skalaCounts[skala] || 0) + 1;
-            });
+            function updateSkalaChart(data) {
+  const skalaCounts = {};
 
-            // Map skala codes to full names
-            const skalaNames = {
-                'K': 'Kecil',
-                'B': 'Besar',
-                'Mn': 'Menengah',
-                'Mi': 'Mikro',
-                'Tidak Diketahui': 'Tidak Diketahui'
-            };
+  data.forEach(company => {
+    let skala = company.skalaUsaha || 'Tidak Diketahui';
+    // satukan MI → Mi (Mikro)
+    if (skala === 'MI') skala = 'Mi';
+    skalaCounts[skala] = (skalaCounts[skala] || 0) + 1;
+  });
 
-            const labels = Object.keys(skalaCounts).map(skala => skalaNames[skala] || skala);
-            const values = Object.values(skalaCounts);
+  // Kode → Nama
+  const skalaNames = {
+    'Mi': 'Mikro',
+    'K':  'Kecil',
+    'Mn': 'Menengah',
+    'B':  'Besar',
+    'Tidak Diketahui': 'Tidak Diketahui'
+  };
 
-            // Color palette
-            const colors = ['#004c99', '#0066cc', '#28a745', '#ffcc00', '#6c757d'];
+  // URUTAN YANG DIINGINKAN (Mikro dulu)
+  const ORDER = ['Mi', 'K', 'Mn', 'B', 'Tidak Diketahui'];
 
-            if (skalaChart) skalaChart.destroy();
+  // susun label & nilai mengikuti ORDER (termasuk 0 kalau tidak ada)
+  const labels = ORDER.map(k => skalaNames[k]);
+  const values = ORDER.map(k => skalaCounts[k] || 0);
 
-            const ctx = document.getElementById('skalaChart').getContext('2d');
-            skalaChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Jumlah Perusahaan',
-                        data: values,
-                        backgroundColor: colors,
-                        borderColor: '#ffffff',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => {
-                                    const value = Number(ctx.raw) || 0;
-                                    const total = ctx.dataset.data.reduce((a, b) => a + Number(b || 0), 0);
-                                    const pct = total ? (value / total * 100) : 0;
-                                    return `${ctx.label}: ${value.toLocaleString('id-ID')} perusahaan (${pct.toFixed(1)}%)`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString('id-ID');
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+  const colors = ['#004c99', '#0066cc', '#28a745', '#ffcc00', '#6c757d'];
+
+  if (skalaChart) skalaChart.destroy();
+
+  const ctx = document.getElementById('skalaChart').getContext('2d');
+  skalaChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Jumlah Perusahaan',
+        data: values,
+        backgroundColor: colors,
+        borderColor: '#ffffff',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const value = Number(ctx.raw) || 0;
+              const total = ctx.dataset.data.reduce((a,b)=>a+Number(b||0),0);
+              const pct = total ? (value/total*100) : 0;
+              return `${ctx.label}: ${value.toLocaleString('id-ID')} perusahaan (${pct.toFixed(1)}%)`;
+            }
+          }
         }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => v.toLocaleString('id-ID') }
+        }
+      }
+    }
+  });
+}
+
 
         function updateProgramChart(data) {
             const programCounts = {};
