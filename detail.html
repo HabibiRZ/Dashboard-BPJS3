@@ -424,12 +424,42 @@ function renderTable(data){
 
 
 function renderPhone(val){
-  const raw = (val == null) ? '' : String(val).trim(); // selalu string
-  if(!raw) return '-';
-  const telHref = raw.replace(/[^\d+]/g,'');           // hanya dipakai untuk href tel:
-  return telHref
-    ? `<a class="instansi-link" href="tel:${telHref}">${escapeHTML(raw)}</a>`
-    : escapeHTML(raw);
+  const display = normalizePhoneDisplay(val);
+  if(!display) return '-';
+
+  // href: angka saja (+ diperbolehkan untuk 62)
+  let href = display.replace(/[^\d+]/g, '');
+
+  // Kalau display tidak pakai +62, pastikan href juga sama (mis. 08…)
+  if (!/^\+?62/.test(href) && /^8/.test(String(val||'').replace(/[^\d+]/g,''))) {
+    href = '0' + String(val||'').replace(/[^\d+]/g,'').replace(/^\+/, '');
+  }
+
+  return href
+    ? `<a class="instansi-link" href="tel:${href}">${escapeHTML(display)}</a>`
+    : escapeHTML(display);
+}
+
+
+function normalizePhoneDisplay(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+
+  // hanya angka + plus untuk cek prefix
+  const digitsPlus = s.replace(/[^\d+]/g, '');
+
+  // Jika sudah 62/+62 → biarkan persis seperti aslinya
+  if (/^\+?62/.test(digitsPlus)) {
+    return s;
+  }
+
+  // Jika diawali 8 (bukan 08) → tambahkan 0 di depan
+  if (/^8/.test(digitsPlus)) {
+    return '0' + digitsPlus.replace(/^\+/, ''); // jadi 08…
+  }
+
+  // Selain itu → biarkan
+  return s;
 }
 
 function updateSummary(data){
@@ -471,15 +501,15 @@ function bindSearch(){
    Export
    ======================= */
 function exportCSV(){
-  const rows=[["No","Nama Perusahaan","TK Aktif","Iuran Terakhir","Alamat","No Hp PIC"]];
+   const rows=[["No","Nama Perusahaan","TK Aktif","Iuran Terakhir","Alamat","No Hp PIC"]];
   filtered.forEach((c,i)=> rows.push([
     i+1,
     c.namaPerusahaan||'',
     Number(c.tkAktif||0),
     String(c.iuranTerakhir||''),
     c.alamat||'',
-    String(c.noHpPic||'')
-  ]));
+    normalizePhoneDisplay(c.noHpPic || '')   // <— pakai yang sudah dinormalisasi
+  ])); 
   const csv = rows.map(r=> r.map(escapeCSV).join(',')).join('\n');
   const blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
