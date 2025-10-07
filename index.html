@@ -425,7 +425,7 @@
             animation: spin 1s linear infinite;
             margin: 0 auto;
         }
-<<<<<<< HEAD
+
 
         .table-toolbar{display:flex;gap:8px;align-items:center;margin:8px 0 12px}
         .table-toolbar input[type="search"]{flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font:inherit}
@@ -435,7 +435,7 @@
         .no-data-row td{color:#999}
 
 
-=======
+
         
         /* ================== STYLE UNTUK FOOTER BARU ================== */
         .main-footer {
@@ -455,8 +455,7 @@
             margin: 0; /* Hapus margin default p */
             line-height: 1.4;
         }
-        
->>>>>>> aa74fb4255817ff0a3b6ccd6ec7906dc0a4a1dc2
+
         /* ================== Media Queries untuk Responsif ================== */
         @media (max-width: 900px) {
             .dashboard {
@@ -620,11 +619,12 @@
                 </div>
             </div>
         </div>
-    </div>
-    
-    <footer class="main-footer">
+        <footer class="main-footer">
         <p class="footer-text">BPJS Ketenagakerjaan Kantor Cabang Medan Kota</p>
     </footer>
+    </div>
+    
+
     <script>
 
         (function(){
@@ -1103,30 +1103,42 @@
 
         function updateProgramChart(data) {
             const programCounts = {};
-            
+
+            // Normalisasi program
             data.forEach(company => {
                 let program = company.program || 'Tidak Diketahui';
-                
-                // Ganti "Tidak Diketahui" dengan "JKK & JKM"
-                if (program === 'Tidak Diketahui') {
-                    program = 'JKK & JKM';
-                }
-                
+                if (program === 'Tidak Diketahui') program = 'JKK & JKM'; // seperti keinginanmu
                 programCounts[program] = (programCounts[program] || 0) + 1;
             });
 
-            // Map program codes to full names
+            // Nama tampilannya
             const programNames = {
-                '3P': 'JKK, JKM & JHT',
-                '4P': 'JKK, JKM, JHT & JP',
-                'JKK & JKM': 'JKK & JKM'
+                'JKK & JKM': 'JKK & JKM',
+                '3P'       : 'JKK, JKM & JHT',
+                '4P'       : 'JKK, JKM, JHT & JP'
             };
 
-            const labels = Object.keys(programCounts).map(program => programNames[program] || program);
-            const values = Object.values(programCounts);
+            // Urutan yang diinginkan
+            const desiredOrder = ['JKK & JKM', '3P', '4P'];
 
-            // Color palette
-            const colors = ['#004c99', '#0066cc', '#28a745'];
+            // Susun label sesuai urutan; sisa kategori (jika ada) di-append di belakang
+            const allKeys = Object.keys(programCounts);
+            const orderedKeys = [
+                ...desiredOrder.filter(k => allKeys.includes(k)),
+                ...allKeys.filter(k => !desiredOrder.includes(k)).sort() // kategori lain (opsional)
+            ];
+
+            const labels = orderedKeys.map(k => programNames[k] || k);
+            const values = orderedKeys.map(k => programCounts[k]);
+
+            // Warna diselaraskan dengan urutan label
+            const colorMap = {
+                'JKK & JKM': '#004c99',
+                '3P'       : '#0066cc',
+                '4P'       : '#28a745'
+            };
+            const fallbackColors = ['#888888', '#aa66cc', '#ff9933', '#33cccc', '#9966ff'];
+            const colors = orderedKeys.map((k, i) => colorMap[k] || fallbackColors[i % fallbackColors.length]);
 
             if (programChart) programChart.destroy();
 
@@ -1134,35 +1146,34 @@
             programChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors,
-                        borderColor: '#ffffff',
-                        borderWidth: 2
-                    }]
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors,
+                    borderColor: '#ffffff',
+                    borderWidth: 2
+                }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => {
-                                    const value = Number(ctx.raw) || 0;
-                                    const total = ctx.dataset.data.reduce((a, b) => a + Number(b || 0), 0);
-                                    const pct = total ? (value / total * 100) : 0;
-                                    return `${ctx.label}: ${value.toLocaleString('id-ID')} perusahaan (${pct.toFixed(1)}%)`;
-                                }
-                            }
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                        const value = Number(ctx.raw) || 0;
+                        const total = ctx.dataset.data.reduce((a, b) => a + Number(b || 0), 0);
+                        const pct = total ? (value / total * 100) : 0;
+                        return `${ctx.label}: ${value.toLocaleString('id-ID')} perusahaan (${pct.toFixed(1)}%)`;
                         }
                     }
+                    }
+                }
                 }
             });
-        }
+            }
+
 
         function updateMainTable(data) {
             const kecamatanCounts = {};
