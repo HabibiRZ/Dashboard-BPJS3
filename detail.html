@@ -152,10 +152,10 @@ th:nth-child(4){ width:150px; }     /* Total Iuran */
           <h3>Total Tenaga Kerja</h3>
           <div class="value" id="totalTK">0</div>
         </div>
-        <div class="card total-iuran">
+        <!-- <div class="card total-iuran">
           <h3>Total Iuran Berjalan</h3>
           <div class="value" id="totalIuran">Rp 0</div>
-        </div>
+        </div> -->
       </div>
     </div>
 
@@ -176,10 +176,11 @@ th:nth-child(4){ width:150px; }     /* Total Iuran */
           <thead>
             <tr>
               <th style="min-width:60px">No.</th>
-              <th style="min-width:280px">Nama Perusahaan</th>
+              <th class="center-text" style="min-width:280px">Nama Perusahaan</th>
               <th class="center-text" style="min-width:120px">TK Aktif</th>
-              <th class="right-text" style="min-width:180px">Total Iuran</th>
-              <th style="min-width:320px">Alamat</th>
+              <th class="right-text" style="min-width:180px">Iuran terakhir</th>
+              <th class="center-text" style="min-width:180px">Alamat</th>
+              <th class="center-text" style="min-width:180px">No Hp PIC</th>
             </tr>
           </thead>
           <tbody id="detailBody">
@@ -194,77 +195,106 @@ th:nth-child(4){ width:150px; }     /* Total Iuran */
       </div>
     </div>
   </div>
-
 <script>
-  let allData = [];
-  let filtered = [];
+/* =======================
+   DETAIL PAGE – FIXED (v3)
+   ======================= */
 
-  // === samakan dengan index.html ===
-  const SHEET_CONFIG = {
-    sheetId: "1bi7beUHCGem8U7-huUarJY1V1pfTPLqSCRwghMjAehk",
-    apiKey:  "AIzaSyDDChj-Syqytv2HboLnbflQu7-u_5VAYIE",
-    range:   "Sheet1!A1:N11000"
-  };
+let allData = [];
+let filtered = [];
 
-  document.addEventListener('DOMContentLoaded', init);
+// Config Google Sheets
+const SHEET_CONFIG = {
+  sheetId: "1bi7beUHCGem8U7-huUarJY1V1pfTPLqSCRwghMjAehk",
+  apiKey:  "AIzaSyDDChj-Syqytv2HboLnbflQu7-u_5VAYIE",
+  range:   "Sheet1!A1:N11000"
+};
 
-  async function init(){
-    updateCurrentDate();
-    updateConnectionStatus('loading','Memuat data…');
+// ---- Cache helpers (bump version to avoid old numeric cache) ----
+const CACHE_KEY = "companyData_v3";
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 menit
 
-    const kec = decodeURIComponent(new URLSearchParams(location.search).get('kecamatan')||'');
-    document.getElementById('kecamatanName').textContent = kec || 'Lain-lain';
-    document.getElementById('tableTitle').textContent   = `Detail Perusahaan — ${kec||'Lain-lain'}`;
+function readCache(){
+  try{ const raw = sessionStorage.getItem(CACHE_KEY); return raw ? JSON.parse(raw) : null; }
+  catch(e){ return null; }
+}
+function writeCache(data){
+  try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); }
+  catch(e){}
+}
 
-    // ambil dari sessionStorage yang di-set halaman Home
-    const ss = (typeof(Storage)!=='undefined') ? sessionStorage.getItem('companyData') : null;
-    if (ss) { try{ allData = JSON.parse(ss)||[] }catch(e){} }
+document.addEventListener('DOMContentLoaded', init);
 
-    if (!allData || allData.length===0){
-      // fallback: fetch langsung dari sheet yang sama
-      document.getElementById('progressContainer').style.display='block';
-      await fetchFromSheet();
-      document.getElementById('progressContainer').style.display='none';
-    }
+async function init(){
+  updateCurrentDate();
+  updateConnectionStatus('loading','Memuat data…');
 
+  const kec = decodeURIComponent(new URLSearchParams(location.search).get('kecamatan') || '');
+  const kecLabel = kec || 'Lain-lain';
+  byId('kecamatanName').textContent = kecLabel;
+  byId('tableTitle').textContent    = `Detail Perusahaan — ${kecLabel}`;
+
+  // 1) Ambil cache bila ada
+  let cache = readCache();
+  if (cache && Array.isArray(cache.data)) {
+    allData = cache.data;
+  }
+
+  // 2) Render cepat bila ada data
+  if (allData.length > 0) {
     applyFilterByKecamatan(kec);
-    bindSearch();
-    document.getElementById('btnExport').addEventListener('click', exportCSV);
   }
 
-  async function fetchFromSheet(){
-    updateProgressBar(10,'Mengambil data dari Google Sheets…');
-    try{
-      const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_CONFIG.sheetId}/values/${SHEET_CONFIG.range}?key=${SHEET_CONFIG.apiKey}`);
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      updateProgressBar(50,'Memproses data…');
-      if(!data.values || data.values.length===0) throw new Error('Kosong');
-
-      const headers = data.values[0];
-      allData = data.values.slice(1).map(row => mapRow(headers,row));
-      try{ sessionStorage.setItem('companyData', JSON.stringify(allData)); }catch(e){}
-      updateProgressBar(100,'Selesai');
-      updateConnectionStatus('online', `${allData.length} data dimuat`);
-    }catch(err){
-      console.error(err);
-      updateConnectionStatus('error','Gagal memuat data');
-      showError('Gagal memuat data dari Google Sheets.');
-    }
+  // 3) Refresh bila cache kosong/kadaluarsa
+  const isStale = !cache || (Date.now() - cache.ts > CACHE_TTL_MS) || allData.length === 0;
+  if (isStale) {
+    showProgress(true);
+    await fetchFromSheet();     // isi allData terbaru (string values)
+    showProgress(false);
+    applyFilterByKecamatan(kec);
+  } else {
+    updateConnectionStatus('online', `${allData.length} data (cache)`);
   }
 
-  function isNamaPerusahaanHeader(key) {
-  // normalisasi
+  bindSearch();
+  onClick('btnExport', exportCSV);
+}
+
+/* =======================
+   Data fetching & mapping
+   ======================= */
+async function fetchFromSheet(){
+  updateProgressBar(10,'Mengambil data dari Google Sheets…');
+  try{
+    // PENTING: paksa API mengembalikan nilai TERFORMAT (string seperti di Sheet)
+    const url =
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_CONFIG.sheetId}/values/${SHEET_CONFIG.range}` +
+      `?valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING&key=${SHEET_CONFIG.apiKey}`;
+
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    updateProgressBar(50,'Memproses data…');
+    if(!data.values || data.values.length===0) throw new Error('Sheet kosong');
+
+    const headers = data.values[0];
+    allData = data.values.slice(1).map(row => mapRow(headers,row));
+
+    writeCache(allData); // cache baru (v3)
+    updateProgressBar(100,'Selesai');
+    updateConnectionStatus('online', `${allData.length} data dimuat`);
+  }catch(err){
+    console.error('Fetch error:', err);
+    updateConnectionStatus('error','Gagal memuat data');
+    showError('Gagal memuat data dari Google Sheets.');
+  }
+}
+
+function isNamaPerusahaanHeader(key) {
   key = String(key || '').toLowerCase().trim();
-  // variasi yang umum muncul
   const patterns = [
-    'nama perusahaan',
-    'nama pemberi kerja',
-    'nama badan usaha',
-    'nama instansi',
-    'pemberi kerja/badan usaha',
-    'pemberi kerja / badan usaha',
-    'perusahaan' // penjaga terakhir: ada kata "perusahaan"
+    'nama perusahaan','nama pemberi kerja','nama badan usaha','nama instansi',
+    'pemberi kerja/badan usaha','pemberi kerja / badan usaha','perusahaan'
   ];
   return patterns.some(p => key.includes(p));
 }
@@ -272,159 +302,231 @@ th:nth-child(4){ width:150px; }     /* Total Iuran */
 function mapRow(headers, row){
   const c = {
     namaPerusahaan:'', alamat:'', kecamatan:'', skalaUsaha:'', program:'',
-    tkAktif:0, nilaiPosting:0
+    tkAktif:0, nilaiPosting:0, noHpPic:''
   };
 
   headers.forEach((h,i)=>{
     const key  = String(h||'').toLowerCase().trim();
-    const cell = row[i] ?? '';
+    // karena kita sudah minta FORMATTED_VALUE, semua cell datang sebagai STRING
+    const cell = (row[i] == null) ? '' : String(row[i]);
 
-    // === NAMA PERUSAHAAN (lebih longgar) ===
+    // Nama Perusahaan (longgar)
     if (!c.namaPerusahaan && isNamaPerusahaanHeader(key)) {
-      if (cell && String(cell).trim() !== '') c.namaPerusahaan = cell;
+      if (cell.trim() !== '') c.namaPerusahaan = cell;
       return;
     }
 
-    // === ALAMAT / KECAMATAN ===
+    // Alamat / Kecamatan
     if (key.includes('alamat')){
       c.alamat = cell;
-      // coba tarik kecamatan dari alamat
       if (!c.kecamatan) c.kecamatan = extractKecamatanFromAlamat(cell);
       return;
     }
     if (key.includes('kecamatan')){
-      if (cell && String(cell).trim() !== '') c.kecamatan = cell;
+      if (cell.trim() !== '') c.kecamatan = cell;
       return;
     }
 
-    // === SKALA / PROGRAM (opsional) ===
+    // Skala / Program
     if (key.includes('skala') || key.includes('usaha')) c.skalaUsaha = cell;
-    if (key.includes('prog') || key.includes('program')) c.program = cell;
+    if (key.includes('prog')  || key.includes('program')) c.program = cell;
 
-    // === TK AKTIF ===
+    // TK Aktif (boleh jadi string; kita parse aman)
     if (key.includes('tk') || key.includes('aktif') || key.includes('tenaga') || key.includes('kerja')){
-      let v = cell;
-      if (typeof v === 'string') v = parseInt(v.replace(/[^\d]/g,'')) || 0;
-      c.tkAktif = Number(v) || 0;
+      let v = parseInt(cell.replace(/[^\d]/g,'')) || 0;
+      c.tkAktif = v;
       return;
     }
 
-    // === TOTAL IURAN / NILAI POSTING ===
+    // Total Iuran / Nilai Posting
     if ((key.includes('total') && key.includes('iuran')) || (key.includes('nilai') && key.includes('posting'))){
       c.nilaiPosting = toNumber(cell);
       return;
     }
+
+    // No HP PIC — hanya jika header terkait telepon & kontak/PIC
+    const isPhone = (key.includes('no hp') || key.includes('hp') || key.includes('telepon') || key.includes('telp') ||
+                     key.includes('phone') || key.includes('wa') || key.includes('whatsapp'));
+    const isPic   = (key.includes('pic') || key.includes('kontak') || key.includes('cp') || key.includes('contact'));
+    if (!c.noHpPic && (isPhone && (isPic || key.includes('pic') || key.includes('cp')))) {
+      c.noHpPic = cell; // simpan PERSIS teks dari Sheet (leading zero, +62, spasi, strip, dll)
+      return;
+    }
+    // (opsional) kalau kolomnya cuma "No HP" tanpa kata PIC, boleh longgarkan:
+    // else if (!c.noHpPic && isPhone) { c.noHpPic = cell; return; }
   });
 
-  // Fallback: kalau namaPerusahaan belum terisi, coba cari lagi berdasarkan header yang mirip
+  // Fallback nama perusahaan
   if (!c.namaPerusahaan) {
     const candidates = [];
     headers.forEach((h,i)=>{
       const key = String(h||'').toLowerCase().trim();
       if (isNamaPerusahaanHeader(key) && row[i] && String(row[i]).trim() !== '') {
-        candidates.push(row[i]);
+        candidates.push(String(row[i]));
       }
     });
-    if (candidates.length > 0) {
-      c.namaPerusahaan = candidates[0];
-    }
+    if (candidates.length > 0) c.namaPerusahaan = candidates[0];
   }
-
-  // Fallback terakhir: kolom D sering berisi nama perusahaan
   if (!c.namaPerusahaan) c.namaPerusahaan = row[3] || '';
 
-  // Pastikan kecamatan terisi
   if (!c.kecamatan) c.kecamatan = extractKecamatanFromAlamat(c.alamat);
-
   return c;
 }
 
-sessionStorage.removeItem('companyData');
+/* =======================
+   Filtering & Rendering
+   ======================= */
+function applyFilterByKecamatan(kecParam){
+  const target=(kecParam||'').toLowerCase().trim();
 
-  function extractKecamatanFromAlamat(alamat){
-    if(!alamat||typeof alamat!=='string') return 'Lain-lain';
-    const low = alamat.toLowerCase();
-    const list = ["medan amplas","medan area","medan barat","medan baru","medan belawan","medan deli","medan denai","medan helvetia","medan johor","medan kota","medan labuhan","medan maimun","medan marelan","medan perjuangan","medan petisah","medan polonia","medan selayang","medan sunggal","medan tembung","medan timur","medan tuntungan"];
-    for(const k of list){ if(low.includes(k)) return capitalizeWords(k); }
-    const m = low.match(/(medan\s+\w+)/i); if(m){ return capitalizeWords(m[1]); }
-    return 'Lain-lain';
-  }
-  function capitalizeWords(str){ return str.replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); }
-  function toNumber(x){ if(typeof x==='number') return x; if(typeof x!=='string') return 0; let v=x.replace(/[^\d,.-]/g,''); if(v.includes(',')&&v.includes('.')) v=v.replace(/\./g,'').replace(',', '.'); else if(v.includes(',')) v=v.replace(/,/g,''); const n=parseFloat(v); return isNaN(n)?0:n; }
-  function formatCurrency(n){ return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0,maximumFractionDigits:0}).format(Number(n||0)); }
-  function updateCurrentDate(){ const now=new Date(); document.getElementById('currentDate').textContent = now.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}); }
-  function updateConnectionStatus(s,m){ const el=document.getElementById('connectionStatus'); el.className=`status-indicator status-${s}`; el.textContent=m; }
-  function updateProgressBar(p,msg){ const bar=document.getElementById('progressBar'); bar.style.width=`${p}%`; bar.textContent=`${p}% - ${msg}`; }
-
-  function applyFilterByKecamatan(kecParam){
-    const target=(kecParam||'').toLowerCase().trim();
-    filtered = allData.filter(c => (c.kecamatan||'').toLowerCase().trim() === target);
-    if(target==='lain-lain'){
-      filtered = allData.filter(c=>{
-        const kc=(c.kecamatan||'').toLowerCase().trim();
-        const known=kc.startsWith('medan ');
-        return !known || kc==='' || kc==='lain-lain';
-      });
-    }
-    filtered.sort((a,b)=> (b.nilaiPosting||0)-(a.nilaiPosting||0));
-    renderTable(filtered);
-    updateSummary(filtered);
-  }
-
-  function renderTable(data){
-    const body=document.getElementById('detailBody');
-    body.innerHTML='';
-    if(!data||data.length===0){
-      body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:#666">Tidak ada data</td></tr>`;
-      document.getElementById('rowCount').textContent='0 data';
-      return;
-    }
-    data.forEach((c,i)=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML = `
-        <td>${i+1}</td>
-        <td>${escapeHTML(c.namaPerusahaan||'-')}</td>
-        <td class="center-text">${Number(c.tkAktif||0).toLocaleString('id-ID')}</td>
-        <td class="right-text">${formatCurrency(c.nilaiPosting||0)}</td>
-        <td>${escapeHTML(c.alamat||'-')}</td>
-      `;
-      body.appendChild(tr);
-    });
-    document.getElementById('rowCount').textContent = `${data.length.toLocaleString('id-ID')} data`;
-  }
-
-  function updateSummary(data){
-    const totalCompanies = data.length;
-    const totalTK = data.reduce((s,c)=> s + (Number(c.tkAktif||0)), 0);
-    const totalIuran = data.reduce((s,c)=> s + (Number(c.nilaiPosting||0)), 0);
-    document.getElementById('totalCompanies').textContent = totalCompanies.toLocaleString('id-ID');
-    document.getElementById('totalTK').textContent = totalTK.toLocaleString('id-ID');
-    document.getElementById('totalIuran').textContent = formatCurrency(totalIuran);
-  }
-
-  function bindSearch(){
-    const input=document.getElementById('search');
-    input.addEventListener('input', ()=>{
-      const q=(input.value||'').toLowerCase();
-      const res = filtered.filter(c => (c.namaPerusahaan||'').toLowerCase().includes(q));
-      renderTable(res);
+  filtered = allData.filter(c => (c.kecamatan||'').toLowerCase().trim() === target);
+  if(target==='lain-lain'){
+    filtered = allData.filter(c=>{
+      const kc=(c.kecamatan||'').toLowerCase().trim();
+      const known=kc.startsWith('medan ');
+      return !known || kc==='' || kc==='lain-lain';
     });
   }
 
-  function exportCSV(){
-    const rows=[["No","Nama Perusahaan","TK Aktif","Total Iuran","Alamat"]];
-    filtered.forEach((c,i)=> rows.push([i+1,c.namaPerusahaan||'',Number(c.tkAktif||0),Number(c.nilaiPosting||0),c.alamat||'']));
-    const csv = rows.map(r=> r.map(escapeCSV).join(',')).join('\n');
-    const blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8;'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-    const kec=document.getElementById('kecamatanName').textContent||'kecamatan';
-    a.download=`detail_perusahaan_${kec.replace(/\s+/g,'_').toLowerCase()}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
+  // sort by iuran desc
+  filtered.sort((a,b)=> (b.nilaiPosting||0)-(a.nilaiPosting||0));
+
+  renderTable(filtered);
+  updateSummary(filtered);
+}
+
+function renderTable(data){
+  const body = byId('detailBody');
+  body.innerHTML='';
+
+  if(!data || data.length===0){
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:16px;color:#666">Tidak ada data</td></tr>`;
+    byId('rowCount').textContent='0 data';
+    return;
   }
 
-  function escapeHTML(s){return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
-  function escapeCSV(v){const s=String(v??''); return /[",\n]/.test(s)? '"'+s.replace(/"/g,'""')+'"' : s;}
-  function showError(m){const d=document.createElement('div'); d.innerHTML=`<div style="position:fixed;top:20px;right:20px;background:#dc3545;color:#fff;padding:15px;border-radius:8px;z-index:10000;max-width:300px;">${m}<button onclick="this.parentElement.remove()" style="float:right;background:none;border:none;color:#fff;font-size:18px;margin-left:10px">&times;</button></div>`; document.body.appendChild(d); setTimeout(()=>{d.remove?.()},5000); }
+  data.forEach((c,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${escapeHTML(c.namaPerusahaan||'-')}</td>
+      <td class="center-text">${Number(c.tkAktif||0).toLocaleString('id-ID')}</td>
+      <td class="right-text">${formatCurrency(c.nilaiPosting||0)}</td>
+      <td>${escapeHTML(c.alamat||'-')}</td>
+      <td>${renderPhone(c.noHpPic)}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  byId('rowCount').textContent = `${data.length.toLocaleString('id-ID')} data`;
+}
+
+function renderPhone(val){
+  const raw = (val == null) ? '' : String(val).trim(); // selalu string
+  if(!raw) return '-';
+  const telHref = raw.replace(/[^\d+]/g,'');           // hanya dipakai untuk href tel:
+  return telHref
+    ? `<a class="instansi-link" href="tel:${telHref}">${escapeHTML(raw)}</a>`
+    : escapeHTML(raw);
+}
+
+function updateSummary(data){
+  const totalCompanies = data.length;
+  const totalTK = data.reduce((s,c)=> s + (Number(c.tkAktif||0)), 0);
+  const totalIuran = data.reduce((s,c)=> s + (Number(c.nilaiPosting||0)), 0);
+  byId('totalCompanies').textContent = totalCompanies.toLocaleString('id-ID');
+  byId('totalTK').textContent        = totalTK.toLocaleString('id-ID');
+  byId('totalIuran').textContent     = formatCurrency(totalIuran);
+}
+
+function bindSearch(){
+  const input = byId('search');
+  if(!input) return;
+
+  const onType = ()=>{
+    const q=(input.value||'').toLowerCase();
+    const qNum = q.replace(/[^\d+]/g,''); // versi numerik query
+    const res = filtered.filter(c => {
+      const nama   = (c.namaPerusahaan||'').toLowerCase();
+      const alamat = (c.alamat||'').toLowerCase();
+      const phone  = (c.noHpPic==null ? '' : String(c.noHpPic)).toLowerCase();
+      const phoneNum = phone.replace(/[^\d+]/g,'');
+      return (
+        nama.includes(q) ||
+        alamat.includes(q) ||
+        phone.includes(q) ||              // cocokkan apa adanya
+        (qNum && phoneNum.includes(qNum)) // juga cocokkan versi numerik
+      );
+    });
+    renderTable(res);
+  };
+
+  input.addEventListener('input', onType);
+  onType(); // initial
+}
+
+/* =======================
+   Export
+   ======================= */
+function exportCSV(){
+  const rows=[["No","Nama Perusahaan","TK Aktif","Total Iuran","Alamat","No Hp PIC"]];
+  filtered.forEach((c,i)=> rows.push([
+    i+1,
+    c.namaPerusahaan||'',
+    Number(c.tkAktif||0),
+    Number(c.nilaiPosting||0),
+    c.alamat||'',
+    String(c.noHpPic||'')   // JANGAN Number()
+  ]));
+  const csv = rows.map(r=> r.map(escapeCSV).join(',')).join('\n');
+  const blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const kec=byId('kecamatanName').textContent||'kecamatan';
+  a.download=`detail_perusahaan_${kec.replace(/\s+/g,'_').toLowerCase()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* =======================
+   Helpers
+   ======================= */
+function byId(id){ return document.getElementById(id); }
+function onClick(id, fn){ const el=byId(id); if(el) el.addEventListener('click', fn); }
+function showProgress(show){ const pc=byId('progressContainer'); if(pc) pc.style.display = show ? 'block' : 'none'; }
+
+function extractKecamatanFromAlamat(alamat){
+  if(!alamat||typeof alamat!=='string') return 'Lain-lain';
+  const low = alamat.toLowerCase();
+  const list = ["medan amplas","medan area","medan barat","medan baru","medan belawan","medan deli","medan denai","medan helvetia","medan johor","medan kota","medan labuhan","medan maimun","medan marelan","medan perjuangan","medan petisah","medan polonia","medan selayang","medan sunggal","medan tembung","medan timur","medan tuntungan"];
+  for(const k of list){ if(low.includes(k)) return capitalizeWords(k); }
+  const m = low.match(/(medan\s+\w+)/i); if(m){ return capitalizeWords(m[1]); }
+  return 'Lain-lain';
+}
+function capitalizeWords(str){ return String(str||'').replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); }
+function toNumber(x){
+  if(typeof x==='number') return x;
+  if(typeof x!=='string') return 0;
+  let v=x.replace(/[^\d,.-]/g,'');
+  if(v.includes(',')&&v.includes('.')) v=v.replace(/\./g,'').replace(',', '.');
+  else if(v.includes(',')) v=v.replace(/,/g,'');
+  const n=parseFloat(v); return isNaN(n)?0:n;
+}
+function formatCurrency(n){ return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0,maximumFractionDigits:0}).format(Number(n||0)); }
+function updateCurrentDate(){
+  const now=new Date();
+  const s = now.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'});
+  const el = byId('currentDate'); if(el) el.textContent = s;
+}
+function updateConnectionStatus(s,m){ const el=byId('connectionStatus'); if(el){ el.className=`status-indicator status-${s}`; el.textContent=m; } }
+function updateProgressBar(p,msg){ const bar=byId('progressBar'); if(bar){ bar.style.width=`${p}%`; bar.textContent=`${p}% - ${msg}`; } }
+function escapeHTML(s){return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
+function escapeCSV(v){const s=String(v??''); return /[",\n]/.test(s)? '"'+s.replace(/"/g,'""')+'"' : s;}
+function showError(m){
+  const d=document.createElement('div');
+  d.innerHTML=`<div style="position:fixed;top:20px;right:20px;background:#dc3545;color:#fff;padding:15px;border-radius:8px;z-index:10000;max-width:300px;">${m}<button onclick="this.parentElement.remove()" style="float:right;background:none;border:none;color:#fff;font-size:18px;margin-left:10px">&times;</button></div>`;
+  document.body.appendChild(d); setTimeout(()=>{d.remove?.()},5000);
+}
 </script>
+
+
 </body>
 </html>

@@ -182,7 +182,7 @@
                   <th class="num">No.</th>
                   <th>Nama Perusahaan   </th>
                   <th class="num">TK Aktif</th>
-                  <th class="idr">Total Iuran</th>
+                  <!-- <th class="idr">Total Iuran</th> -->
                   <th class="idr">Kecamatan</th>
                   </tr>
               </thead>
@@ -203,7 +203,7 @@
                   <th class="num">No.</th>
                   <th>Nama Perusahaan   </th>
                   <th class="num">TK Aktif</th>
-                  <th class="idr">Total Iuran</th>
+                  <!-- <th class="idr">Total Iuran</th> -->
                   <th class="idr">Kecamatan</th>
                   </tr>
               </thead>
@@ -318,7 +318,7 @@
       const nama   = row[F_NAMA]   || '';
       const alamat = row[F_ALAMAT] || '';
       const tk     = toInt(row[F_TK]);
-      const iuran  = toNumber(row[F_IURAN]);
+      // const iuran  = toNumber(row[F_IURAN]);
 
       return {
         no: idx+1,
@@ -326,7 +326,7 @@
         alamat,
         kecamatan: extractKecamatanFromAlamat(alamat),
         tkAktif: tk,
-        totalIuran: iuran
+        // totalIuran: iuran
       };
     }).filter(p => String(p.namaPerusahaan||'').trim() !== '');
 
@@ -349,7 +349,7 @@
           <div class="sub">${escapeHTML(it.alamat || '-')}</div>
         </td>
         <td class="num">${Number(it.tkAktif||0).toLocaleString('id-ID')}</td>
-        <td class="idr">${formatCurrency(it.totalIuran||0)}</td>
+       
         <td>${escapeHTML(it.kecamatan||'Lain-lain')}</td>
       `;
       tbodyEl.appendChild(tr);

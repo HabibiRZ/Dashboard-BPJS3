@@ -427,6 +427,14 @@
             margin: 0 auto;
         }
 
+        .table-toolbar{display:flex;gap:8px;align-items:center;margin:8px 0 12px}
+        .table-toolbar input[type="search"]{flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font:inherit}
+        .table-toolbar button{padding:8px 12px;border:1px solid #ddd;background:#f8f8f8;border-radius:10px;cursor:pointer}
+        .table-toolbar button:hover{background:#eee}
+        .highlight{background:linear-gradient(transparent 60%, #fff59d 60%)}
+        .no-data-row td{color:#999}
+
+
         /* ================== Media Queries untuk Responsif ================== */
         @media (max-width: 900px) {
             .dashboard {
@@ -527,10 +535,10 @@
                         <h3>Total Perusahaan</h3>
                         <div class="value" id="totalCompanies">0</div>
                     </div>
-                    <div class="card total-value">
+                    <!-- <div class="card total-value">
                         <h3>Total Iuran</h3>
                         <div class="value currency" id="totalIuran">Rp 0</div>
-                    </div>
+                    </div> -->
                     <div class="card total-tenaga-kerja">
                         <h3>Total Tenaga Kerja</h3>
                         <div class="value" id="totalTenagaKerja">0</div>
@@ -555,6 +563,10 @@
 
             <div class="panel table-area">
                 <h2>Kecamatan</h2>
+                <div class="table-toolbar">
+                    <input type="search" id="tableSearch" placeholder="Cari NamaKecamatan" aria-label="Cari di tabel">
+                    <button type="button" id="clearSearch" aria-label="Bersihkan">×</button>
+                </div>
                 <div class="progress-container" id="progressContainer" style="display: none;">
                     <div class="progress-bar" id="progressBar">0%</div>
                 </div>
@@ -583,6 +595,118 @@
     </div>
 
     <script>
+
+        (function(){
+            const input = document.getElementById('tableSearch');
+            const clearBtn = document.getElementById('clearSearch');
+            const tbody = document.getElementById('mainTableBody');
+            if(!input || !tbody) return;
+
+            const debounce = (fn, d=150)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), d); }; };
+
+            function escapeHtml(s){
+                s = (s == null) ? '' : String(s);
+                return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+            }
+            function highlight(text, q){
+                const base = (text == null) ? '' : String(text);
+                if(!q) return escapeHtml(base);
+                const i = base.toLowerCase().indexOf(q.toLowerCase());
+                if(i === -1) return escapeHtml(base);
+                return escapeHtml(base.slice(0,i))
+                + '<span class="highlight">' + escapeHtml(base.slice(i, i+q.length)) + '</span>'
+                + escapeHtml(base.slice(i+q.length));
+            }
+
+            function filter(){
+                const q = (input.value || '').trim().toLowerCase();
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                // buang pesan "no data" kalau ada
+                const empty = tbody.querySelector('.no-data-row');
+                if(empty) empty.remove();
+
+                let visibleIdx = 0;
+
+                rows.forEach(tr=>{
+                // lewati row spinner
+                if(tr.querySelector('.loading-spinner')){
+                    tr.style.display = q ? 'none' : '';
+                    return;
+                }
+
+                const cellsText = Array.from(tr.cells).slice(1).map(td=>{
+                    const a = td.querySelector && td.querySelector('a');
+                    // pakai teks mentah dari anchor (data-orig) agar span highlight tidak mengganggu pencarian
+                    return ((a && a.dataset && a.dataset.orig) ? a.dataset.orig : (td.textContent || '')).toLowerCase();
+                }).join(' | ');
+
+                const match = q === '' ? true : cellsText.includes(q);
+                tr.style.display = match ? '' : 'none';
+
+                const nameCell = tr.cells && tr.cells[1];
+
+                if(match){
+                    // nomor urut
+                    const firstCell = tr.cells && tr.cells[0];
+                    if(firstCell) firstCell.textContent = (++visibleIdx).toString();
+
+                    // highlight aman tanpa merusak href di <a>
+                    if(nameCell){
+                    const a = nameCell.querySelector('a');
+                    if(a){
+                        if(!a.dataset.orig) a.dataset.orig = a.textContent || '';
+                        a.innerHTML = highlight(a.dataset.orig, q);
+                    }else{
+                        nameCell.innerHTML = highlight(nameCell.textContent || '', q);
+                    }
+                    }
+                }else{
+                    // bersihkan highlight di baris yang disembunyikan
+                    if(nameCell){
+                    const a = nameCell.querySelector('a');
+                    if(a){
+                        if(a.dataset.orig) a.textContent = a.dataset.orig;
+                    }else{
+                        nameCell.textContent = nameCell.textContent || '';
+                    }
+                    }
+                }
+                });
+
+                if(visibleIdx === 0 && !tbody.querySelector('.loading-spinner')){
+                const tr = document.createElement('tr');
+                tr.className = 'no-data-row';
+                tr.innerHTML = '<td colspan="4" style="text-align:center;padding:16px;">Tidak ada data yang cocok.</td>';
+                tbody.appendChild(tr);
+                }
+
+                // kalau query kosong, bersihkan semua highlight
+                if(!q){
+                rows.forEach(tr=>{
+                    const nameCell = tr.cells && tr.cells[1];
+                    if(!nameCell) return;
+                    const a = nameCell.querySelector('a');
+                    if(a){
+                    if(a.dataset.orig) a.textContent = a.dataset.orig;
+                    }else{
+                    nameCell.textContent = nameCell.textContent || '';
+                    }
+                });
+                }
+            }
+
+            input.addEventListener('input', debounce(filter, 100));
+            if(clearBtn){
+                clearBtn.addEventListener('click', ()=>{ input.value=''; input.focus(); filter(); });
+            }
+
+            // re-run filter saat tbody di-update (data async)
+            const observer = new MutationObserver(debounce(filter, 0));
+            observer.observe(tbody, { childList: true });
+
+            })();
+
         let skalaChart = null;
         let programChart = null;
         let allData = [];
@@ -593,6 +717,10 @@
             apiKey: "AIzaSyDDChj-Syqytv2HboLnbflQu7-u_5VAYIE",
             range: "Sheet1!A1:N11000" // Range untuk 11.000 data
         };
+
+        
+
+        
 
         document.addEventListener('DOMContentLoaded', async () => {
             updateCurrentDate();
@@ -752,8 +880,8 @@
                 updateProgressBar(100, 'Gagal memuat data');
                 return allData;
             }
-        }
-
+        }   
+        
         function extractKecamatanFromAlamat(alamat) {
             if (!alamat || typeof alamat !== 'string') return 'Lain-lain';
             
