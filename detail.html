@@ -535,7 +535,7 @@ function renderTable(data){
       <td class="center-text">${Number(c.tkAktif||0).toLocaleString('id-ID')}</td>
       <td class="center-text">${escapeHTML(c.iuranTerakhir || '-')}</td>
       <td>${escapeHTML(c.alamat||'-')}</td>
-      <td>${renderPhone(c.noHpPic)}</td>
+      <td class="center-text">${renderPhone(c.noHpPic)}</td>
     `;
     body.appendChild(tr);
   });
