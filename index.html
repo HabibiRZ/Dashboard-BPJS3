@@ -666,7 +666,51 @@
             .header-logo {
                 height: 50px;
             }
+
+
+            /* Style untuk heading dalam bulatan biru */
+.circle-heading {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--color-primary), #0056b3);
+    color: var(--color-text-light);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 10px;
+}
+
+.summary-cards-wrapper h2.circle-heading {
+    text-align: left;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.chart-card h3.circle-heading {
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    text-align: center;
+}
         }
+        
+        .circle-heading-container {
+            background: linear-gradient(135deg, var(--color-primary), #0056b3);
+            color: var(--color-text-light);
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: var(--box-shadow);
+            margin-bottom: 10px;
+            display: inline-block;
+            text-align: center; /* Center the text */
+        }
+        
+         .circle-heading {
+            display: inline; /* Make the heading inline */
+            margin: 0; /* Remove default margins */
+        }
+        
     </style>
 </head>
 <body>
@@ -703,7 +747,7 @@
 
         <div id="dashboard" class="dashboard">
             <div class="panel summary-area summary-cards-wrapper">
-                <h2>Rekap Perusahaan</h2> 
+                 <div class="circle-heading-container">Rekap Perusahaan</div> 
                 <div class="summary-cards">
                     <div class="card total-projects">
                         <h3>Total Perusahaan</h3>
@@ -717,23 +761,23 @@
             </div>
 
             <div class="panel charts-area charts-container">
-                <div class="chart-card">
-                    <h3>Distribusi Perusahaan Berdasarkan Skala</h3>
-                    <div class="chart-container">
-                        <canvas id="skalaChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-card">
-                    <h3>Distribusi Perusahaan Berdasarkan Program</h3>
-                    <div class="chart-container">
-                        <canvas id="programChart"></canvas>
-                    </div>
-                </div>
-            </div>
+    <div class="chart-card">
+        <div class="circle-heading-container">Distribusi Perusahaan Berdasarkan Skala</div>
+        <div class="chart-container">
+            <canvas id="skalaChart"></canvas>
+        </div>
+    </div>
+    <div class="chart-card">
+        <div class="circle-heading-container">Distribusi Perusahaan Berdasarkan Program</div>
+        <div class="chart-container">
+            <canvas id="programChart"></canvas>
+        </div>
+    </div>
+</div>
 
             <div class="panel table-area">
                 <div class="table-selector" id="tableSelector">
-                    <h2 id="tableTitle">Kecamatan <span class="dropdown-arrow">▼</span></h2>
+                    <div class="circle-heading-container" id="tableTitle">Kecamatan <span class="dropdown-arrow">▼</span></div>
                     <div class="table-options">
                         <div class="table-option" data-table="kecamatan">Kecamatan</div>
                         <div class="table-option" data-table="perusahaan">Perusahaan</div>
@@ -1339,21 +1383,68 @@ function capitalizeWords(str) {
         }
 
         function updateSkalaChart(data) {
-            const skalaCounts = {};
-            data.forEach(company => {
-                let skala = company.skalaUsaha || 'Tidak Diketahui';
-                if (skala === 'MI') skala = 'Mi';
-                skalaCounts[skala] = (skalaCounts[skala] || 0) + 1;
-            });
-            const skalaNames = { 'Mi': 'Mikro', 'K': 'Kecil', 'Mn': 'Menengah', 'B': 'Besar', 'Tidak Diketahui': 'Tidak Diketahui' };
-            const ORDER = ['Mi', 'K', 'Mn', 'B', 'Tidak Diketahui'];
-            const labels = ORDER.map(k => skalaNames[k]);
-            const values = ORDER.map(k => skalaCounts[k] || 0);
-            const colors = ['#004c99', '#0066cc', '#28a745', '#ffcc00', '#6c757d'];
-            if (skalaChart) skalaChart.destroy();
-            const ctx = document.getElementById('skalaChart').getContext('2d');
-            skalaChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Jumlah Perusahaan', data: values, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => { const value = Number(ctx.raw) || 0; const total = ctx.dataset.data.reduce((a,b)=>a+Number(b||0),0); const pct = total ? (value/total*100) : 0; return `${ctx.label}: ${value.toLocaleString('id-ID')} perusahaan (${pct.toFixed(1)}%)`; } } } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('id-ID') } } } } });
-        }
+    const skalaCounts = {};
+    data.forEach(company => {
+        let skala = company.skalaUsaha || 'Tidak Diketahui';
+        if (skala === 'MI') skala = 'Mi';
+        skalaCounts[skala] = (skalaCounts[skala] || 0) + 1;
+    });
+    const skalaNames = { 'Mi': 'Mikro', 'K': 'Kecil', 'Mn': 'Menengah', 'B': 'Besar', 'Tidak Diketahui': 'Tidak Diketahui' };
+    const ORDER = ['Mi', 'K', 'Mn', 'B', 'Tidak Diketahui'];
+    const labels = ORDER.map(k => skalaNames[k]);
+    const values = ORDER.map(k => skalaCounts[k] || 0);
+    const colors = ['#004c99', '#0066cc', '#28a745', '#ffcc00', '#6c757d'];
+    if (skalaChart) skalaChart.destroy();
+    const ctx = document.getElementById('skalaChart').getContext('2d');
+    skalaChart = new Chart(ctx, { 
+        type: 'bar', 
+        data: { 
+            labels, 
+            datasets: [{ 
+                label: 'Jumlah Perusahaan', 
+                data: values, 
+                backgroundColor: colors, 
+                borderColor: '#ffffff', 
+                borderWidth: 1 
+            }] 
+        }, 
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { 
+                legend: { display: false }, 
+                tooltip: { 
+                    callbacks: { 
+                        label: (ctx) => { 
+                            const value = Number(ctx.raw) || 0; 
+                            const total = ctx.dataset.data.reduce((a,b)=>a+Number(b||0),0); 
+                            const pct = total ? (value/total*100) : 0; 
+                            return `${ctx.label}: ${value.toLocaleString('id-ID')} perusahaan (${pct.toFixed(1)}%)`; 
+                        } 
+                    } 
+                } 
+            }, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { callback: v => v.toLocaleString('id-ID') } 
+                } 
+            },
+            // Tambahkan ini untuk membuat chart bisa diklik
+            onClick: (evt, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const skalaValue = ORDER[index];
+                    // Redirect ke halaman detail dengan parameter skala
+                    window.location.href = `detail_skala.html?skala=${encodeURIComponent(skalaValue)}`;
+                }
+            }
+        } 
+    });
+
+    // Tambahkan style cursor pointer
+    ctx.canvas.style.cursor = 'pointer';
+}
 
         function updateProgramChart(data) {
             const programCounts = {};
@@ -1453,7 +1544,7 @@ function capitalizeWords(str) {
                 refreshButton.innerHTML = '🔄 Refresh';
                 refreshButton.className = 'nav-button';
                 refreshButton.style.cssText = `
-                    background: var(--color-surface); color: var(--color-primary); border: none; padding: 6px 12px;
+                    background: var(--color-surface); color: var(--color-primary; border: none; padding: 6px 12px;
                     border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9em; transition: all 0.3s ease;
                     margin-left: 10px;
                 `;
