@@ -222,7 +222,12 @@
             min-height: 35px;
             height: 35px;
         }
-            
+        
+        .data-table td:nth-child(5), /* Iuran Terakhir */
+        .data-table td:nth-child(6) { /* No. HP PIC */
+            text-align: center;
+        }
+        
         .data-table { 
             width: 100%;
             border-collapse: collapse;
@@ -231,11 +236,11 @@
         
         /* Lebar kolom untuk tabel perusahaan */
         .company-table th:nth-child(1), .company-table td:nth-child(1) { width: 5%; }
-        .company-table th:nth-child(2), .company-table td:nth-child(2) { width: 35%; }
+        .company-table th:nth-child(2), .company-table td:nth-child(2) { width: 30%; }
         .company-table th:nth-child(3), .company-table td:nth-child(3) { width: 10%; }
         .company-table th:nth-child(4), .company-table td:nth-child(4) { width: 20%; }
-        .company-table th:nth-child(5), .company-table td:nth-child(5) { width: 15%; }
-        .company-table th:nth-child(6), .company-table td:nth-child(6) { width: 15%; }
+        .company-table th:nth-child(5), .company-table td:nth-child(5) { width: 15%; text-align: center; } /* Iuran Terakhir */
+        .company-table th:nth-child(6), .company-table td:nth-child(6) { width: 15%; text-align: center; } /* No. HP PIC */
         
         .data-table tr:nth-child(even) { background-color: #f8fafc; }
 
