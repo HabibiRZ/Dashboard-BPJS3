@@ -336,7 +336,7 @@ const SHEET_CONFIG = {
 };
 
 // ---- Cache helpers (bump version to avoid old numeric cache) ----
-const CACHE_KEY = "companyData_v3";
+sessionStorage.removeItem("companyData_v3"); // Force refresh cache
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 menit
 
 function readCache(){
@@ -535,7 +535,7 @@ function renderTable(data){
       <td class="center-text">${Number(c.tkAktif||0).toLocaleString('id-ID')}</td>
       <td class="center-text">${escapeHTML(c.iuranTerakhir || '-')}</td>
       <td>${escapeHTML(c.alamat||'-')}</td>
-      <td class="center-text">${renderPhone(c.noHpPic)}</td>
+       <td class="center-text">${renderPhone(c.noHpPic)}</td>
     `;
     body.appendChild(tr);
   });
@@ -644,13 +644,135 @@ function byId(id){ return document.getElementById(id); }
 function onClick(id, fn){ const el=byId(id); if(el) el.addEventListener('click', fn); }
 function showProgress(show){ const pc=byId('progressContainer'); if(pc) pc.style.display = show ? 'block' : 'none'; }
 
-function extractKecamatanFromAlamat(alamat){
-  if(!alamat||typeof alamat!=='string') return 'Lain-lain';
-  const low = alamat.toLowerCase();
-  const list = ["medan amplas","medan area","medan barat","medan baru","medan belawan","medan deli","medan denai","medan helvetia","medan johor","medan kota","medan labuhan","medan maimun","medan marelan","medan perjuangan","medan petisah","medan polonia","medan selayang","medan sunggal","medan tembung","medan timur","medan tuntungan"];
-  for(const k of list){ if(low.includes(k)) return capitalizeWords(k); }
-  const m = low.match(/(medan\s+\w+)/i); if(m){ return capitalizeWords(m[1]); }
-  return 'Lain-lain';
+function extractKecamatanFromAlamat(alamat) {
+    if (!alamat || typeof alamat !== 'string') return 'Lain-lain';
+    
+    const alamatLower = alamat.toLowerCase().trim();
+    
+    // Daftar lengkap kecamatan di Kota Medan
+    const kecamatanList = [
+        "medan amplas", "medan area", "medan barat", "medan baru", "medan belawan",
+        "medan deli", "medan denai", "medan helvetia", "medan johor", "medan kota",
+        "medan labuhan", "medan maimun", "medan marelan", "medan perjuangan", "medan petisah",
+        "medan polonia", "medan selayang", "medan sunggal", "medan tembung", "medan timur",
+        "medan tuntungan"
+    ];
+    
+    // Cek kota/kabupaten untuk filter luar Medan - HARUS DI AKHIR ALAMAT
+    const kotaLuarMedan = [
+        "binjai kota", "pekanbaru", "jakarta", "deli serdang", "serdang bedagai", 
+        "labuhan deli", "percut sei tuan", "kisaran", "pekan baru", "tangerang",
+        "kelapa dua", "pancur batu"
+    ];
+    
+    // PERTAMA: Cari pattern kecamatan Medan di mana saja dalam alamat
+    const medanPatterns = [
+        // Pattern 1: Format "KEC. MEDAN BARAT" (dengan titik atau tanpa)
+        /kec\.?\s*(medan\s+\w+)/i,
+        // Pattern 2: Format "KECAMATAN MEDAN BARAT" 
+        /kecamatan\s+(medan\s+\w+)/i,
+        // Pattern 3: Format "MEDAN TIMUR KOTA MEDAN" 
+        /(medan\s+\w+)\s+kota\s+medan/i,
+        // Pattern 4: Format "SUNGGAL KOTA MEDAN" atau "DENAI KOTA MEDAN"
+        /(\w+)\s+kota\s+medan/i,
+        // Pattern 5: Setelah "KEL." dengan format apapun
+        /(?:kel\.?|kelurahan)\s+[^,]+\s+(medan\s+\w+)/i,
+        // Pattern 6: "MEDAN BARAT" di mana saja (fallback)
+        /(medan\s+\w+)/i
+    ];
+    
+    // Cari kecamatan Medan terlebih dahulu
+    let foundKecamatan = null;
+    for (const pattern of medanPatterns) {
+        const match = alamatLower.match(pattern);
+        if (match) {
+            console.log("Pattern matched:", pattern, "->", match[1] || match[0]);
+            let tempKecamatan = capitalizeWords(match[1] || match[0]);
+            
+            // Handle kasus "SUNGGAL" menjadi "MEDAN SUNGGAL"
+            if (!tempKecamatan.toLowerCase().startsWith('medan ') && 
+                kecamatanList.includes('medan ' + tempKecamatan.toLowerCase())) {
+                tempKecamatan = 'Medan ' + tempKecamatan;
+            }
+            
+            // Handle typo
+            tempKecamatan = tempKecamatan.replace('sunngal', 'sunggal');
+            
+            // Validasi apakah yang ditemukan benar kecamatan Medan
+            if (kecamatanList.includes(tempKecamatan.toLowerCase())) {
+                foundKecamatan = tempKecamatan;
+                break;
+            }
+        }
+    }
+    
+    // KEDUA: Jika ditemukan kecamatan Medan, cek apakah ada kontradiksi dengan kota luar
+    if (foundKecamatan) {
+        // Cek apakah ada kota luar Medan di AKHIR alamat (bukan di tengah)
+        const hasKotaLuarDiAkhir = kotaLuarMedan.some(kota => {
+            const regex = new RegExp(kota + '\\s*$', 'i');
+            return regex.test(alamatLower);
+        });
+        
+        // Jika ada kecamatan Medan dan TIDAK ada kota luar di akhir, return kecamatan Medan
+        if (!hasKotaLuarDiAkhir) {
+            return foundKecamatan;
+        }
+    }
+    
+    // KETIGA: Cek manual untuk kasus spesifik
+    const manualChecks = [
+        { test: ['gaharu', 'medan timur'], result: 'Medan Timur' },
+        { test: ['cinta damai', 'medan helvetia'], result: 'Medan Helvetia' },
+        { test: ['tanjung gusta', 'sunggal'], result: 'Medan Sunggal' },
+        { test: ['sei sikambing', 'sei skambing', 'sikambing'], result: 'Medan Sunggal' },
+        { test: ['kesawan'], result: 'Medan Barat' },
+        { test: ['sei rengas', 'asia'], result: 'Medan Area' },
+        { test: ['bangun purba', 'kebun'], result: 'Medan Area' },
+        { test: ['mabar', 'medan deli'], result: 'Medan Deli' },
+        { test: ['binjai', 'medan denai'], result: 'Medan Denai' },
+        { test: ['pancing', 'medan estate', 'tembung'], result: 'Medan Tembung' },
+        { test: ['william iskandar', 'medan tembung'], result: 'Medan Tembung' },
+        { test: ['pulo brayan', 'brayan city', 'medan barat'], result: 'Medan Barat' }
+    ];
+    
+    for (const check of manualChecks) {
+        if (check.test.some(keyword => alamatLower.includes(keyword))) {
+            return check.result;
+        }
+    }
+    
+    return 'Lain-lain';
+}
+
+// Fungsi helper untuk membersihkan dan memproses data
+function processCompanyData(company) {
+    if (!company.kecamatan && company.alamat) {
+        company.kecamatan = extractKecamatanFromAlamat(company.alamat);
+    }
+    
+    // Handle kasus khusus berdasarkan nama perusahaan atau alamat
+    if (company.namaPerusahaan) {
+        const namaLower = company.namaPerusahaan.toLowerCase();
+        const alamatLower = (company.alamat || '').toLowerCase();
+        
+        // Perusahaan dengan "UNIT AMPLAS" tapi di Jakarta
+        if (namaLower.includes('unit amplas') && alamatLower.includes('jakarta')) {
+            company.kecamatan = 'Lain-lain';
+        }
+        
+        // Perusahaan dengan "LABORATORIUM" di Pekanbaru
+        if (namaLower.includes('laboratorium') && alamatLower.includes('pekanbaru')) {
+            company.kecamatan = 'Lain-lain';
+        }
+        
+        // Perusahaan dengan "SERDANG BEDAGAI" di alamat
+        if (alamatLower.includes('serdang bedagai')) {
+            company.kecamatan = 'Lain-lain';
+        }
+    }
+    
+    return company;
 }
 function capitalizeWords(str){ return String(str||'').replace(/\w\S*/g,t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); }
 function toNumber(x){
