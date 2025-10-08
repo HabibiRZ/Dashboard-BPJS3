@@ -227,6 +227,8 @@
         display: none; 
       }
     }
+
+    
     
     /* Very small screens */
     @media (max-width: 480px){
@@ -235,6 +237,33 @@
       .summary-cards .card .value{ font-size: 1.1rem; }
       th, td{ padding: 4px 6px; font-size: 0.8em; }
     }
+
+    /* Style untuk heading dalam bulatan biru di detail page */
+.panel h2.circle-heading {
+    background: linear-gradient(135deg, var(--color-primary), #0056b3);
+    color: var(--color-text-light);
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 12px;
+    display: inline-block;
+}
+
+/* Style khusus untuk kecamatan name */
+#kecamatanName {
+    display: inline-block;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: var(--color-text-light);
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 8px;
+    box-shadow: var(--box-shadow);
+}
   </style>
 </head>
 <body>
@@ -269,7 +298,7 @@
 
     <!-- Ringkasan -->
     <div class="panel">
-      <h2>Rekap Perusahaan Berdasarkan Kecamatan <div class="value" id="kecamatanName">-</div> </h2>
+      <h2 class="circle-heading">Rekap Perusahaan Berdasarkan Kecamatan <div class="value" id="kecamatanName">-</div> </h2>
       <div class="summary-cards">
         <div class="card total-projects">
           <h3>Total Perusahaan</h3>
