@@ -342,6 +342,30 @@
             margin: 0;
             line-height: 1.4;
         }
+
+        /* Style untuk heading dalam bulatan biru */
+        .circle-heading-container {
+            color: var(--color-text-light);
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: var(--box-shadow);
+            margin-bottom: 10px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .circle-heading-container.green {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .circle-heading-container.red {
+            background: linear-gradient(135deg, #dc3545, #e35d6a);
+        }
+
+        .circle-heading {
+            display: inline;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -376,7 +400,7 @@
 
         <div class="grid">
             <section class="panel">
-                <h2>Top 10 Perusahaan dengan Tenaga Kerja Aktif Terbanyak <span class="badge" id="badgeTopCount">0 instansi</span></h2>
+                <div class="circle-heading-container green">Top 10 Perusahaan dengan Tenaga Kerja Aktif Terbanyak <span class="badge" id="badgeTopCount">0 instansi</span></div>
                 <div class="table-wrap" id="topWrap">
                     <table id="topTable" class="table-green">
                         <thead>
@@ -399,7 +423,7 @@
             </section>
 
             <section class="panel">
-                <h2>Bottom 10 Perusahaan dengan Tenaga Kerja Aktif Terendah<span class="badge" id="badgeBottomCount">0 instansi</span></h2>
+                <div class="circle-heading-container red">Bottom 10 Perusahaan dengan Tenaga Kerja Aktif Terendah<span class="badge" id="badgeBottomCount">0 instansi</span></div>
                 <div class="table-wrap" id="bottomWrap">
                     <table id="bottomTable" class="table-red">
                         <thead>
